@@ -1,35 +1,59 @@
 import { ethers } from "hardhat";
-import { PRESALE_LENGTH, WETH_ADDRESS, X28_ADDRESS, X28_HOLDER_1, X28_HOLDER_2 } from "../../config/constants";
-import { fundWallet, parseUranus, passDays } from "../../config/utils";
+import { fundWallet, getPackedPath, parseUranus, passDays } from "../../config/utils";
+import {
+    E280_ADDRESS,
+    ELMNT_ADDRESS,
+    ELMNT_HOLDER,
+    H420_ADDRESS,
+    HLX_ADDRESS,
+    POOL_FEE_1PERCENT,
+    TITANX_ADDRESS,
+    WETH9_ADDRESS,
+    WL_REGISTRY_ADDRESS,
+    WL_REGISTRY_OWNER,
+} from "../../config/constants";
 
 async function main() {
-    const [owner, user, user2, lpWallet, distributor] = await ethers.getSigners();
+    //// USERS ////
+    const [deployer, owner, user, user2] = await ethers.getSigners();
+    const registryOwner = await ethers.getImpersonatedSigner(WL_REGISTRY_OWNER);
 
-    /// Tokens
-    const weth = await ethers.getContractAt("IWETH9", WETH_ADDRESS);
-    const x28 = await ethers.getContractAt("IERC20", X28_ADDRESS);
+    const wlRegistry = await ethers.getContractAt("IWhitelistRegistry", WL_REGISTRY_ADDRESS);
+    await wlRegistry.connect(registryOwner).setWhitelisted([user], true);
 
-    const tokenFactory = await ethers.getContractFactory("Uranus");
-    const uranus = await tokenFactory.deploy(owner, lpWallet, distributor);
+    //// TOKENS ////
+    const h420 = await ethers.getContractAt("IERC20Burnable", H420_ADDRESS);
+    const elmnt = await ethers.getContractAt("IERC20", ELMNT_ADDRESS);
+    const hlx = await ethers.getContractAt("IERC20", HLX_ADDRESS);
+    const e280 = await ethers.getContractAt("IERC20", E280_ADDRESS);
+    const weth = await ethers.getContractAt("IWETH9", WETH9_ADDRESS);
+    const titanx = await ethers.getContractAt("IERC20", TITANX_ADDRESS);
 
-    const buyBurnFactory = await ethers.getContractFactory("UranusBuyBurn");
-    const buyburn = await buyBurnFactory.deploy(owner, uranus);
+    const buyBurnF = await ethers.getContractFactory("H420BuyBurnV2");
+    const buyBurn = await buyBurnF.deploy(owner);
 
-    const userX28Balance = await fundWallet(x28, X28_HOLDER_1, user);
-    const user2X28Balance = await fundWallet(x28, X28_HOLDER_2, user2);
+    const wethCapPerSwap = ethers.WeiPerEther;
+    const wethIncentiveBps = 100;
+    const wethInterval = 300;
+    const wethBalance = 3n * ethers.WeiPerEther;
+    await buyBurn.connect(owner).addUniswapV3Token(weth, titanx, POOL_FEE_1PERCENT, wethCapPerSwap, wethIncentiveBps, wethInterval);
+    // const wethPath = getPackedPath([WETH9_ADDRESS, TITANX_ADDRESS, HLX_ADDRESS], [POOL_FEE_1PERCENT, POOL_FEE_1PERCENT]);
 
-    await buyburn.connect(owner).setWhitelisted([user], true);
+    // await buyBurn.connect(owner).addUniswapV3MultihopToken(weth, wethPath, wethCapPerSwap, wethIncentiveBps, wethInterval);
+
+    const hlxCapPerSwap = 100_000_000n * ethers.WeiPerEther;
+    const hlxIncentiveBps = 100;
+    const hlxInterval = 300;
+
+    await buyBurn.connect(owner).addUniswapV2Token(hlx, [HLX_ADDRESS, ELMNT_ADDRESS, E280_ADDRESS], hlxCapPerSwap, hlxIncentiveBps, hlxInterval);
+    await user.sendTransaction({ to: buyBurn, value: wethBalance });
 
     // adjust time
     const customTimestamp = Math.floor(new Date().getTime() / 1000);
 
     await ethers.provider.send("evm_setNextBlockTimestamp", [customTimestamp]);
 
-    await uranus.connect(owner).startPresale();
-    await uranus.connect(owner).setBuyBurn(buyburn);
-
-    console.log("uranus DEPLOYED TO: ", uranus.target);
-    console.log("buyburn DEPLOYED TO: ", buyburn.target);
+    console.log("H420BuyBurnV2 DEPLOYED TO: ", buyBurn.target);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
