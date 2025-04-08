@@ -39,13 +39,13 @@ contract H420BuyBurnV2 is Ownable2Step {
     // -------------------------- STATE VARIABLES -------------------------- //
 
     /// @notice Basis point incentive fee paid out for calling Buy & Burn.
-    uint16 public buyBurnIncentiveFeeBps = 30;
+    uint16 public buyBurnIncentiveFeeBps = 42;
     /// @notice Cooldown for Buy & Burns in seconds.
-    uint32 public buyBurnInterval = 60 minutes;
+    uint32 public buyBurnInterval = 6 hours;
     /// @notice Time used for TitanX price calculation.
     uint32 public titanXPriceLookback = 15 minutes;
-    /// @notice The maximum amount of DRAGONX that can be swapped per Buy & Burn.
-    uint256 public capPerSwapBuyBurn = 140_000_000 ether;
+    /// @notice The maximum amount of E280 that can be swapped per Buy & Burn.
+    uint256 public capPerSwapBuyBurn = 2_000_000_000 ether;
     /// @notice Time of the last Buy & Burn in seconds.
     uint256 public lastBuyBurn;
 
@@ -161,8 +161,8 @@ contract H420BuyBurnV2 is Ownable2Step {
         emit SettingsUpdate();
     }
 
-    /// @notice Sets the cap per swap for DRAGONX -> BDX swaps during Buy&Burn calls.
-    /// @param limit The new cap limit in WEI applied to DRAGONX balance.
+    /// @notice Sets the cap per swap for E280 -> H420 swaps during Buy & Burn calls.
+    /// @param limit The new cap limit in WEI applied to E280 balance.
     function setCapPerSwapBuyBurn(uint256 limit) external onlyOwner {
         capPerSwapBuyBurn = limit;
         emit SettingsUpdate();
